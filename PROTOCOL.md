@@ -68,8 +68,19 @@ The server must ignore every message other than `Hello`/`AuthResponse`/`Ping` be
 | 0x31 | MouseMove       | C→S | `u16 x`, `u16 y` (normalized 0..65535 across the streamed display) |
 | 0x32 | MouseButton     | C→S | `u8 button` (0 left, 1 right, 2 middle, 3 back, 4 forward), `u8 down` |
 | 0x33 | Scroll          | C→S | `f32 dx`, `f32 dy` (positive dy = scroll up / content moves down; positive dx = scroll left / content moves right, as on macOS), `u8 precise` (1 = pixels, 0 = lines) |
+| 0x34 | MediaKey        | C→S | `u8 key` (see Media keys), `u8 down` |
 | 0x40 | Clipboard       | both| `u8 kind` (0 = UTF-8 text, 1 = PNG image), `bytes` (rest of payload) |
 | 0x7F | Bye             | both| `str reason` |
+
+### Keys
+`Key.hid_usage` is a USB HID keyboard-page usage. Usage `0x65` (Keyboard Application / Menu) is
+interpreted as the Mac **Fn/Globe** key: PC keyboards handle their own Fn key in firmware, so the client
+sends a stand-in key as `0x65` instead.
+
+### Media keys
+`0` play/pause, `1` next track, `2` previous track, `3` volume up, `4` volume down, `5` mute,
+`6` brightness up, `7` brightness down, `8` keyboard backlight up, `9` keyboard backlight down,
+`10` keyboard backlight toggle, `11` eject. Unknown values are ignored.
 
 ### Codecs
 `0` = H.264, `1` = HEVC.

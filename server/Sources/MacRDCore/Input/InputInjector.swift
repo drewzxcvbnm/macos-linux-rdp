@@ -28,6 +28,10 @@ public final class InputInjector {
     // MARK: Keyboard
 
     public func key(usage: UInt16, down: Bool) {
+        if let media = MediaKey.forHIDUsage(usage) {
+            mediaKey(media, down: down)
+            return
+        }
         guard let vk = KeyMap.virtualKey(forHIDUsage: usage) else {
             log("input: unmapped HID usage 0x\(String(usage, radix: 16))")
             return
@@ -47,7 +51,15 @@ public final class InputInjector {
         } else {
             event.flags = flags.union(Self.implicitFlags(vk))
         }
+        if KeyMap.modifierFlag(forHIDUsage: usage) != nil {
+            // Real keyboards report modifiers (including Fn) as flagsChanged, not keyDown/keyUp.
+            event.type = .flagsChanged
+        }
         event.post(tap: .cghidEventTap)
+    }
+
+    public func mediaKey(_ key: MediaKey, down: Bool) {
+        key.post(down: down)
     }
 
     /// Arrow/function-row keys carry these flags on real keyboards; some apps depend on them.
@@ -55,6 +67,9 @@ public final class InputInjector {
         switch vk {
         case 0x7B...0x7E: [.maskNumericPad, .maskSecondaryFn]
         case 0x72, 0x73, 0x74, 0x75, 0x77, 0x79: .maskSecondaryFn
+        // F1-F20, as Apple keyboards report them.
+        case 0x7A, 0x78, 0x63, 0x76, 0x60, 0x61, 0x62, 0x64, 0x65, 0x6D, 0x67, 0x6F,
+             0x69, 0x6B, 0x71, 0x6A, 0x40, 0x4F, 0x50, 0x5A: .maskSecondaryFn
         default: []
         }
     }

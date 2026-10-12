@@ -244,6 +244,8 @@ public final class Session {
             injector?.mouseButton(button, down: down)
         case let .scroll(dx, dy, precise):
             injector?.scroll(dx: dx, dy: dy, precise: precise)
+        case let .mediaKey(key, down):
+            if let media = MediaKey(rawValue: key) { injector?.mediaKey(media, down: down) }
         case let .clipboard(kind, data):
             if let k = ClipboardKind(rawValue: kind), data.count <= ClipboardSync.maxBytes {
                 onClipboard?(k, data)

@@ -17,7 +17,7 @@ use sdl2::event::{Event, WindowEvent};
 use sdl2::video::FullscreenType;
 
 use crate::decode::{FrameSlot, HwAccel};
-use crate::input::{Hotkey, InputState};
+use crate::input::{FnKey, Hotkey, InputState};
 use crate::net::{ConnectOptions, Inbound};
 
 #[derive(Parser, Debug)]
@@ -59,6 +59,9 @@ struct Args {
     /// Swap Ctrl and Super so PC-style Ctrl+C/V maps to Cmd+C/V
     #[arg(long)]
     swap_cmd_ctrl: bool,
+    /// Local key that acts as the Mac Fn/Globe key
+    #[arg(long, value_enum, default_value_t = FnKey::Menu)]
+    fn_key: FnKey,
     #[arg(long, value_enum, default_value_t = HwAccel::Auto)]
     hwaccel: HwAccel,
     /// Disable clipboard sync
@@ -203,7 +206,7 @@ fn run(args: Args) -> Result<()> {
     };
     start_stream(display_index, renderer.canvas.output_size().map_err(|e| anyhow!(e))?);
 
-    let mut input = InputState::new(args.swap_cmd_ctrl);
+    let mut input = InputState::new(args.swap_cmd_ctrl, args.fn_key);
     let mut grabbed = true;
     set_grab(&mut renderer, grabbed);
     let mut pending_resize: Option<Instant> = None;

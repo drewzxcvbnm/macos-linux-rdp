@@ -15,6 +15,25 @@ pub const CLIPBOARD_PNG: u8 = 1;
 
 pub const START_FLAG_VIRTUAL_DISPLAY: u8 = 1;
 
+/// HID usage sent for the Mac Fn/Globe key (Keyboard Application / Menu).
+pub const HID_FN: u16 = 0x65;
+
+/// `MediaKey.key` values.
+pub mod media {
+    pub const PLAY_PAUSE: u8 = 0;
+    pub const NEXT: u8 = 1;
+    pub const PREVIOUS: u8 = 2;
+    pub const VOLUME_UP: u8 = 3;
+    pub const VOLUME_DOWN: u8 = 4;
+    pub const MUTE: u8 = 5;
+    pub const BRIGHTNESS_UP: u8 = 6;
+    pub const BRIGHTNESS_DOWN: u8 = 7;
+    pub const KBD_LIGHT_UP: u8 = 8;
+    pub const KBD_LIGHT_DOWN: u8 = 9;
+    pub const KBD_LIGHT_TOGGLE: u8 = 10;
+    pub const EJECT: u8 = 11;
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct DisplayInfo {
     pub id: u32,
@@ -44,6 +63,7 @@ pub enum Message {
     MouseMove { x: u16, y: u16 },
     MouseButton { button: u8, down: bool },
     Scroll { dx: f32, dy: f32, precise: bool },
+    MediaKey { key: u8, down: bool },
     Clipboard { kind: u8, data: Vec<u8> },
     Bye { reason: String },
 }
@@ -87,6 +107,7 @@ impl Message {
             Message::MouseMove { .. } => 0x31,
             Message::MouseButton { .. } => 0x32,
             Message::Scroll { .. } => 0x33,
+            Message::MediaKey { .. } => 0x34,
             Message::Clipboard { .. } => 0x40,
             Message::Bye { .. } => 0x7F,
         }
@@ -160,6 +181,10 @@ impl Message {
                 w.f32(*dy);
                 w.u8(*precise as u8);
             }
+            Message::MediaKey { key, down } => {
+                w.u8(*key);
+                w.u8(*down as u8);
+            }
             Message::Clipboard { kind, data } => {
                 w.u8(*kind);
                 w.bytes(data);
@@ -214,6 +239,7 @@ impl Message {
             0x31 => Message::MouseMove { x: r.u16()?, y: r.u16()? },
             0x32 => Message::MouseButton { button: r.u8()?, down: r.u8()? != 0 },
             0x33 => Message::Scroll { dx: r.f32()?, dy: r.f32()?, precise: r.u8()? != 0 },
+            0x34 => Message::MediaKey { key: r.u8()?, down: r.u8()? != 0 },
             0x40 => Message::Clipboard { kind: r.u8()?, data: r.rest().to_vec() },
             0x7F => Message::Bye { reason: r.str()? },
             _ => return Ok(None),
@@ -358,6 +384,7 @@ mod tests {
             Message::MouseMove { x: 0, y: 65535 },
             Message::MouseButton { button: 2, down: false },
             Message::Scroll { dx: -1.5, dy: 3.25, precise: true },
+            Message::MediaKey { key: media::VOLUME_UP, down: true },
             Message::Clipboard { kind: CLIPBOARD_TEXT, data: b"hello".to_vec() },
             Message::Bye { reason: "bye".into() },
         ]

@@ -61,10 +61,17 @@ The fingerprint is stored in `~/.config/macrd/known_hosts`. A changed fingerprin
 
 Useful flags: `--display N`, `--codec hevc`, `--bitrate 60` (Mbps), `--fps 120`, `--fullscreen`,
 `--native` (stream native resolution instead of the window size), `--virtual-display`,
-`--swap-cmd-ctrl` (PC-style Ctrl+C/V → Cmd+C/V), `--hwaccel none|vaapi`, `--no-clipboard`,
+`--swap-cmd-ctrl` (PC-style Ctrl+C/V → Cmd+C/V), `--fn-key KEY`, `--hwaccel none|vaapi`, `--no-clipboard`,
 `--password` / `$MACRD_PASSWORD`, `--fingerprint HEX`. The window title shows fps, bitrate, decode time and RTT.
 
-Default key mapping: Super → Cmd, Alt → Option, Ctrl → Control.
+Default key mapping: Super → Cmd, Alt → Option, Ctrl → Control, **Menu → Fn/Globe**.
+PC keyboards handle their own Fn key in firmware, so it never reaches the client; pick a stand-in with
+`--fn-key menu|right-ctrl|right-alt|right-super|caps-lock|none`. Fn works as a modifier (Fn+click, Fn+key
+shortcuts); some Globe-key system shortcuts (emoji picker, dictation) may not respond to synthetic events.
+
+Media keys (play/pause, next/previous, volume, mute, brightness, keyboard backlight, eject) are forwarded
+as macOS system media events. With the keyboard grab active, X11 delivers them to the client; some Wayland
+compositors keep them for themselves.
 
 | Hotkey          | Action                       |
 |-----------------|------------------------------|

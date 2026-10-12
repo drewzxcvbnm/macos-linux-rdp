@@ -37,6 +37,7 @@ struct MessagesTests {
             .mouseMove(x: 0, y: 65535),
             .mouseButton(button: 2, down: false),
             .scroll(dx: -1.5, dy: 3.25, precise: true),
+            .mediaKey(key: 3, down: true),
             .clipboard(kind: 0, data: Data("hello".utf8)),
             .bye(reason: "bye"),
         ]
@@ -77,6 +78,10 @@ struct MessagesTests {
         expect(KeyMap.virtualKey(forHIDUsage: 0x04) == 0x00)  // A
         expect(KeyMap.virtualKey(forHIDUsage: 0xE3) == 0x37)  // Left GUI -> Command
         expect(KeyMap.virtualKey(forHIDUsage: 0x28) == 0x24)  // Return
+        expect(KeyMap.virtualKey(forHIDUsage: 0x65) == 0x3F)  // Application -> Fn
+        expect(KeyMap.modifierFlag(forHIDUsage: 0x65) == .maskSecondaryFn)
+        expect(MediaKey(rawValue: 0)?.nxKeyType == 16)  // play -> NX_KEYTYPE_PLAY
+        expect(MediaKey.forHIDUsage(0x80) == .volumeUp)
     }
 
     func testFit() {
