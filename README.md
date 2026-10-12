@@ -67,7 +67,9 @@ Useful flags: `--display N`, `--codec hevc`, `--bitrate 60` (Mbps), `--fps 120`,
 Default key mapping: Super → Cmd, Alt → Option, Ctrl → Control, **Menu → Fn/Globe**.
 PC keyboards handle their own Fn key in firmware, so it never reaches the client; pick a stand-in with
 `--fn-key menu|right-ctrl|right-alt|right-super|caps-lock|none`. Fn works as a modifier (Fn+click, Fn+key
-shortcuts); some Globe-key system shortcuts (emoji picker, dictation) may not respond to synthetic events.
+shortcuts). macOS ignores synthetic Globe presses, so the server emulates a Globe **tap** itself, following
+System Settings → Keyboard → "Press 🌐 key to": change input source (switch keyboard layout) or show emoji.
+Dictation cannot be triggered remotely.
 
 Media keys (play/pause, next/previous, volume, mute, brightness, keyboard backlight, eject) are forwarded
 as macOS system media events. With the keyboard grab active, X11 delivers them to the client; some Wayland

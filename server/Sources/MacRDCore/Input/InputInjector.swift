@@ -10,6 +10,8 @@ public final class InputInjector {
     private var pressedKeys = Set<UInt16>()
     private var buttonsDown = Set<UInt8>()
     private var position = CGPoint.zero
+    /// Fn pressed with nothing else since: releasing it counts as a Globe tap.
+    private var globeTapStart: TimeInterval?
 
     // Double/triple click tracking.
     private var lastClickTime: TimeInterval = 0
@@ -41,6 +43,18 @@ public final class InputInjector {
             flags = pressedModifiers.values.reduce(into: CGEventFlags()) { $0.insert($1) }
         }
         let isRepeat = down && pressedKeys.contains(usage)
+        let now = ProcessInfo.processInfo.systemUptime
+        var globeTapped = false
+        if usage == Self.hidFn {
+            if down, !isRepeat {
+                globeTapStart = pressedKeys.isEmpty && buttonsDown.isEmpty ? now : nil
+            } else if !down, let start = globeTapStart, now - start < 1.0 {
+                globeTapped = true
+            }
+            if !down { globeTapStart = nil }
+        } else if down {
+            globeTapStart = nil
+        }
         if down { pressedKeys.insert(usage) } else { pressedKeys.remove(usage) }
 
         guard let event = CGEvent(keyboardEventSource: source, virtualKey: vk, keyDown: down) else { return }
@@ -56,6 +70,21 @@ public final class InputInjector {
             event.type = .flagsChanged
         }
         event.post(tap: .cghidEventTap)
+        if globeTapped {
+            GlobeKey.tap { [weak self] in self?.postEmojiShortcut() }
+        }
+    }
+
+    private static let hidFn: UInt16 = 0x65
+
+    /// Ctrl+Cmd+Space opens the emoji & symbols picker.
+    private func postEmojiShortcut() {
+        let mods: CGEventFlags = [.maskControl, .maskCommand]
+        for down in [true, false] {
+            guard let e = CGEvent(keyboardEventSource: source, virtualKey: 0x31, keyDown: down) else { continue }
+            e.flags = mods.union(flags)
+            e.post(tap: .cghidEventTap)
+        }
     }
 
     public func mediaKey(_ key: MediaKey, down: Bool) {
@@ -102,6 +131,7 @@ public final class InputInjector {
         }
 
         if down {
+            globeTapStart = nil
             let now = ProcessInfo.processInfo.systemUptime
             let near = hypot(position.x - lastClickPosition.x, position.y - lastClickPosition.y) < 5
             if button == lastClickButton, near, now - lastClickTime < NSEvent.doubleClickInterval {

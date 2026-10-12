@@ -22,6 +22,7 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("Network"),
                 .linkedFramework("IOKit"),
+                .linkedFramework("Carbon"),
             ]
         ),
         .executableTarget(name: "macrd-server", dependencies: ["MacRDCore"]),
