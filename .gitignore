@@ -1,0 +1,6 @@
+.DS_Store
+server/.build/
+server/.swiftpm/
+client/target/
+*.h264
+*.h265
