@@ -77,6 +77,14 @@ The server must ignore every message other than `Hello`/`AuthResponse`/`Ping` be
 interpreted as the Mac **Fn/Globe** key: PC keyboards handle their own Fn key in firmware, so the client
 sends a stand-in key as `0x65` instead.
 
+On a Linux host (`macrd-host`) the same usages are injected as the corresponding evdev/X keys; `0x65` is
+the Menu key there and `0xE3`/`0xE7` (GUI) are Super.
+
+### Linux host notes
+`ServerInfo` display ids are RandR output ids and `scale` is always 1. `StartStream` flag bit0 (virtual
+display) is ignored. Scroll deltas are converted to X wheel button clicks (lines directly; precise pixels
+accumulated, 30 px per click).
+
 ### Media keys
 `0` play/pause, `1` next track, `2` previous track, `3` volume up, `4` volume down, `5` mute,
 `6` brightness up, `7` brightness down, `8` keyboard backlight up, `9` keyboard backlight down,

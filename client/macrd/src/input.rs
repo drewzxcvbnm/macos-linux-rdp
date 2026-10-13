@@ -70,6 +70,8 @@ pub enum Hotkey {
 pub struct InputState {
     pub swap_cmd_ctrl: bool,
     pub fn_key: FnKey,
+    /// Send wheel deltas as the OS reports them instead of undoing its natural-scrolling inversion.
+    pub natural_scroll: bool,
     pressed: HashSet<u16>,
     pressed_media: HashSet<u8>,
     /// Scancodes whose key-down was consumed as a hotkey; their key-up is swallowed too.
@@ -82,6 +84,7 @@ impl InputState {
         InputState {
             swap_cmd_ctrl,
             fn_key,
+            natural_scroll: false,
             pressed: HashSet::new(),
             pressed_media: HashSet::new(),
             swallowed: HashSet::new(),
@@ -179,7 +182,7 @@ impl InputState {
 
     /// Wheel notches become line scrolls; fractional (touchpad) deltas become pixel scrolls.
     pub fn wheel(&mut self, px: f32, py: f32, direction: MouseWheelDirection, pixels_per_unit: f32) -> Option<Message> {
-        let flip = if direction == MouseWheelDirection::Flipped { -1.0 } else { 1.0 };
+        let flip = if direction == MouseWheelDirection::Flipped && !self.natural_scroll { -1.0 } else { 1.0 };
         let (x, y) = (px * flip, py * flip);
         let integral = |v: f32| (v - v.round()).abs() < 1e-3;
         if integral(x) && integral(y) {
@@ -264,6 +267,14 @@ mod tests {
         assert_eq!(normalize(100, 0, r), (0, 0));
         assert_eq!(normalize(300, 100, r), (65535, 65535));
         assert_eq!(normalize(0, 50, r), (0, 32768));
+    }
+
+    #[test]
+    fn natural_scroll_keeps_flipped_direction() {
+        let mut s = InputState::new(false, FnKey::Menu);
+        assert_eq!(s.wheel(0.0, 1.0, MouseWheelDirection::Flipped, 30.0), Some(Message::Scroll { dx: 0.0, dy: -1.0, precise: false }));
+        s.natural_scroll = true;
+        assert_eq!(s.wheel(0.0, 1.0, MouseWheelDirection::Flipped, 30.0), Some(Message::Scroll { dx: 0.0, dy: 1.0, precise: false }));
     }
 
     #[test]

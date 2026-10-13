@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["proto", "macrd"]
+members = ["proto", "macrd", "host"]
 
 [profile.release]
 lto = "thin"

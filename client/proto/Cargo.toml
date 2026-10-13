@@ -5,3 +5,5 @@ edition = "2021"
 description = "Wire protocol for macrd (see PROTOCOL.md)"
 
 [dependencies]
+hmac = "0.12"
+sha2 = "0.10"

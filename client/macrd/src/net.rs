@@ -7,8 +7,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
 use anyhow::{anyhow, bail, Context, Result};
-use hmac::{Hmac, Mac};
-use macrd_proto::{frame_len, DisplayInfo, Message, PROTOCOL_VERSION};
+use macrd_proto::{auth_mac, frame_len, DisplayInfo, Message, PROTOCOL_VERSION};
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
 use rustls::crypto::{verify_tls12_signature, verify_tls13_signature, CryptoProvider};
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
@@ -186,14 +185,6 @@ async fn handshake<R: AsyncRead + Unpin, W: AsyncWrite + Unpin>(
     }
 }
 
-/// HMAC-SHA256(password, nonce || fingerprint), as specified in PROTOCOL.md.
-pub fn auth_mac(password: &str, nonce: &[u8; 32], fingerprint: &[u8; 32]) -> [u8; 32] {
-    let mut mac = Hmac::<Sha256>::new_from_slice(password.as_bytes()).expect("HMAC accepts any key length");
-    mac.update(nonce);
-    mac.update(fingerprint);
-    mac.finalize().into_bytes().into()
-}
-
 async fn send<W: AsyncWrite + Unpin>(wr: &mut W, m: &Message) -> Result<()> {
     wr.write_all(&m.encode()).await?;
     wr.flush().await?;
@@ -357,12 +348,5 @@ mod tests {
         assert_eq!(parse_fingerprint(&hex(&fp)), Some(fp));
         assert_eq!(parse_fingerprint(&hex(&fp).replace(':', "")), Some(fp));
         assert_eq!(parse_fingerprint("zz"), None);
-    }
-
-    #[test]
-    fn auth_mac_known_vector() {
-        // HMAC-SHA256(key="pw", msg=32x0x01 || 32x0x00); same vector is checked by the Swift selftest.
-        let mac = auth_mac("pw", &[1; 32], &[0; 32]);
-        assert_eq!(hex(&mac).replace(':', "").to_lowercase(), "d32d564a001d330d2c0e0d74d09d9787379479494baa4b8943c817698643d0b0");
     }
 }

@@ -73,6 +73,10 @@ struct Args {
     /// Pixels per touchpad scroll unit
     #[arg(long, default_value_t = 30.0)]
     scroll_speed: f32,
+    /// Keep the local "natural" scroll direction (macOS clients connecting to a Linux host, which
+    /// does not apply natural scrolling to remote input itself)
+    #[arg(long)]
+    natural_scroll: bool,
 }
 
 const HOTKEYS: &str = "Hotkeys:\n  Ctrl+Alt+G      toggle keyboard/mouse grab\n  Ctrl+Alt+F      toggle fullscreen\n  \
@@ -207,6 +211,7 @@ fn run(args: Args) -> Result<()> {
     start_stream(display_index, renderer.canvas.output_size().map_err(|e| anyhow!(e))?);
 
     let mut input = InputState::new(args.swap_cmd_ctrl, args.fn_key);
+    input.natural_scroll = args.natural_scroll;
     let mut grabbed = true;
     set_grab(&mut renderer, grabbed);
     let mut pending_resize: Option<Instant> = None;

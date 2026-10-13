@@ -1,7 +1,8 @@
-# macrd — low-latency Linux → macOS remote desktop
+# macrd — low-latency Linux ↔ macOS remote desktop
 
 A from-scratch remote desktop: **`macrd-server`** (Swift) runs on the Mac, **`macrd`** (Rust) runs on Linux.
-It is built for LAN use with the lowest latency it can get:
+The other direction works too: **`macrd-host`** (Rust) shares a Linux X11 desktop, and `macrd` runs on the
+Mac (see [Linux host](#linux-host-macos--linux)). It is built for LAN use with the lowest latency it can get:
 
 - ScreenCaptureKit capture → VideoToolbox hardware H.264/HEVC (low-latency rate control, no B-frames)
 - FFmpeg decode on the client (VAAPI on Linux, VideoToolbox on macOS, software fallback), SDL2 rendering, vsync off
@@ -84,6 +85,53 @@ compositors keep them for themselves.
 
 The client also builds on macOS (`brew install sdl2 ffmpeg pkg-config`, then
 `LIBRARY_PATH=/opt/homebrew/lib cargo build`), which is handy for testing against a local server.
+
+## Linux host (macOS → Linux)
+
+`macrd-host` shares an X11 session (tested with i3; any X11 desktop works) using the same protocol, so the
+`macrd` client connects to it exactly like to a Mac:
+
+- MIT-SHM capture of one RandR monitor, XDamage so a static screen costs (almost) nothing, cursor drawn in
+- NVENC H.264/HEVC (`p1`/`ull`, CBR, no B-frames), falling back to x264/x265 `ultrafast`/`zerolatency`
+- XTest keyboard/mouse/scroll injection, media keys as XF86 keys, clipboard via the X selection
+- Keeps the screensaver/locker/DPMS away while a client is connected
+
+Build on the Linux machine (same FFmpeg packages as the client; no SDL needed). For NVENC, the distro FFmpeg
+must be built with it (Debian/Ubuntu/Arch/Fedora RPM Fusion are) and the NVIDIA driver installed:
+
+```sh
+cd client
+cargo build --release -p macrd-host
+./target/release/macrd-host --list-displays
+./target/release/macrd-host                   # prints the TLS fingerprint and password
+```
+
+First run creates `~/.config/macrd-host/` with a self-signed TLS identity (`cert.der`, `key.der`) and a random
+`password` (or pass `--password` / `$MACRD_PASSWORD`). Options: `--port`, `--bind`, `--encoder auto|nvenc|software`,
+`--hide-cursor`, `--max-in-flight N`, `--always-capture` (ignore XDamage, e.g. if some app does not report
+damage), `--insecure`.
+
+It must run inside the X session (it needs `$DISPLAY`). With i3, add to `~/.config/i3/config`:
+
+```
+exec --no-startup-id ~/macrd/client/target/release/macrd-host
+```
+
+On the Mac, build the client (`brew install sdl2 ffmpeg pkg-config`, then
+`cd client && LIBRARY_PATH=/opt/homebrew/lib cargo build --release -p macrd`) and connect:
+
+```sh
+./target/release/macrd my-linux-box.local --natural-scroll --codec hevc
+```
+
+- Cmd arrives as Super, i.e. i3's `$mod` when it is `Mod4`. Use `--swap-cmd-ctrl` if you would rather have
+  Cmd+C/V act as Ctrl+C/V (Ctrl then becomes Super).
+- `--natural-scroll` keeps the macOS scroll direction; without it scrolling on Linux feels reversed.
+- Fn/Globe never reaches apps on macOS; the Menu-key stand-in (`--fn-key`) arrives on Linux as the Menu key.
+- The display IDs printed by the client are RandR output IDs; `--display 0/1/...` (index) works as well.
+- macOS keeps some shortcuts for itself even with the keyboard grab (Cmd+Tab, Cmd+Space, Mission Control,
+  and media/brightness keys); remap them in System Settings or use the i3 alternatives while connected.
+- `--virtual-display` is ignored by the Linux host.
 
 ## Limitations
 

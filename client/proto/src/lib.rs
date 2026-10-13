@@ -3,6 +3,9 @@
 
 use std::fmt;
 
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
+
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const MAX_FRAME_LEN: usize = 64 * 1024 * 1024;
 pub const DEFAULT_PORT: u16 = 7878;
@@ -248,6 +251,14 @@ impl Message {
     }
 }
 
+/// `AuthResponse.mac`: HMAC-SHA256(password, nonce || cert_fingerprint), as specified in PROTOCOL.md.
+pub fn auth_mac(password: &str, nonce: &[u8; 32], fingerprint: &[u8; 32]) -> [u8; 32] {
+    let mut mac = Hmac::<Sha256>::new_from_slice(password.as_bytes()).expect("HMAC accepts any key length");
+    mac.update(nonce);
+    mac.update(fingerprint);
+    mac.finalize().into_bytes().into()
+}
+
 /// Parses the 4-byte length prefix, validating it.
 pub fn frame_len(header: [u8; 4]) -> Result<usize, Error> {
     let len = u32::from_le_bytes(header) as usize;
@@ -426,6 +437,14 @@ mod tests {
         let mut f = Framer::default();
         f.push(&[0xFF, 0xFF, 0xFF, 0x7F, 0x20]);
         assert!(f.next_message().is_err());
+    }
+
+    #[test]
+    fn auth_mac_known_vector() {
+        // HMAC-SHA256(key="pw", msg=32x0x01 || 32x0x00); same vector is checked by the Swift selftest.
+        let mac = auth_mac("pw", &[1; 32], &[0; 32]);
+        let hex: String = mac.iter().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(hex, "d32d564a001d330d2c0e0d74d09d9787379479494baa4b8943c817698643d0b0");
     }
 
     #[test]
