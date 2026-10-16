@@ -12,6 +12,7 @@ mod keymap;
 mod net;
 mod session;
 mod stream;
+mod xsession;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -67,6 +68,7 @@ pub struct Config {
 fn main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let args = Args::parse();
+    xsession::detect();
 
     if args.list_displays {
         for d in display::list()? {

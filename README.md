@@ -73,7 +73,8 @@ random `password` (or pass `--password` / `$MACRD_PASSWORD`). Options: `--port`,
 `--encoder auto|nvenc|software`, `--hide-cursor`, `--max-in-flight N`, `--always-capture` (ignore XDamage, e.g.
 if some app does not report damage), `--insecure`.
 
-It must run inside the X session (it needs `$DISPLAY`). With i3, add to `~/.config/i3/config`:
+It needs the X session: started outside of it (SSH, a TTY, systemd) without `$DISPLAY`, it borrows
+`DISPLAY`/`XAUTHORITY` from your running window manager. With i3, add to `~/.config/i3/config`:
 
 ```
 exec --no-startup-id ~/macrd/target/release/macrd-server-linux
