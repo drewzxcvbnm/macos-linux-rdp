@@ -193,7 +193,18 @@ fn run(args: Args) -> Result<()> {
     }
     let canvas = window.into_canvas().accelerated().build()?;
     let mut renderer = render::Renderer::new(canvas);
-    sdl.mouse().show_cursor(args.local_cursor);
+    // The remote cursor is drawn into the video. On macOS, SDL hides the cursor via an embedded GIF that
+    // recent ImageIO versions crash on (EXC_ARM_DA_ALIGN), so use a transparent bitmap cursor there instead.
+    let _blank_cursor = if args.local_cursor {
+        None
+    } else if cfg!(target_os = "macos") {
+        let c = sdl2::mouse::Cursor::new(&[0], &[0], 8, 1, 0, 0).map_err(|e| anyhow!(e))?;
+        c.set();
+        Some(c)
+    } else {
+        sdl.mouse().show_cursor(false);
+        None
+    };
 
     let codec = if args.codec == CodecArg::Hevc { CODEC_HEVC } else { CODEC_H264 };
     let start_stream = |index: usize, size: (u32, u32)| {
