@@ -1,4 +1,5 @@
-//! macrd client: low-latency remote desktop into a macOS machine running macrd-server.
+//! macrd client (Linux and macOS): low-latency remote desktop into a machine running macrd-server
+//! (macOS) or macrd-server-linux.
 
 mod clipboard;
 mod decode;
@@ -73,7 +74,7 @@ struct Args {
     /// Pixels per touchpad scroll unit
     #[arg(long, default_value_t = 30.0)]
     scroll_speed: f32,
-    /// Keep the local "natural" scroll direction (macOS clients connecting to a Linux host, which
+    /// Keep the local "natural" scroll direction (macOS clients connecting to macrd-server-linux, which
     /// does not apply natural scrolling to remote input itself)
     #[arg(long)]
     natural_scroll: bool,

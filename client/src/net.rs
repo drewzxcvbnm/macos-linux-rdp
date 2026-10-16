@@ -144,7 +144,7 @@ async fn establish(opts: &ConnectOptions) -> Result<Established> {
 
     if pinned.is_none() {
         eprintln!("The server at {host_key} is not known.\nTLS fingerprint (SHA-256): {}", hex(&fingerprint));
-        eprintln!("Compare it with the fingerprint printed by macrd-server.");
+        eprintln!("Compare it with the fingerprint printed by the server on startup.");
         if !opts.accept_new {
             eprint!("Trust this server? [y/N] ");
             std::io::stderr().flush().ok();

@@ -1,4 +1,4 @@
-//! macrd-host: shares a Linux X11 desktop with macrd clients, speaking the same protocol as the macOS
+//! macrd-server-linux: shares a Linux X11 desktop with macrd clients, speaking the same protocol as the macOS
 //! `macrd-server` (see PROTOCOL.md).
 
 mod awake;
@@ -34,7 +34,7 @@ struct Args {
     /// Disable TLS (development only; the client must also use --insecure)
     #[arg(long)]
     insecure: bool,
-    /// Connection password (default: $MACRD_PASSWORD, else generated and stored in ~/.config/macrd-host/password)
+    /// Connection password (default: $MACRD_PASSWORD, else generated and stored in ~/.config/macrd-server-linux/password)
     #[arg(long)]
     password: Option<String>,
     /// Do not draw the cursor into the video
@@ -114,7 +114,14 @@ fn main() -> Result<()> {
 }
 
 pub fn config_dir() -> PathBuf {
-    dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("macrd-host")
+    let base = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
+    let dir = base.join("macrd-server-linux");
+    // Keep the identity and password from before the rename (`macrd-host`), so clients stay paired.
+    let old = base.join("macrd-host");
+    if !dir.exists() && old.is_dir() && std::fs::rename(&old, &dir).is_ok() {
+        log::info!("moved {} to {}", old.display(), dir.display());
+    }
+    dir
 }
 
 /// Generated on first run, like the macOS server does.

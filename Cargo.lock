@@ -705,7 +705,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "macrd-host"
+name = "macrd-proto"
+version = "0.1.0"
+dependencies = [
+ "hmac",
+ "sha2",
+]
+
+[[package]]
+name = "macrd-server-linux"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -725,14 +733,6 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "x11rb",
-]
-
-[[package]]
-name = "macrd-proto"
-version = "0.1.0"
-dependencies = [
- "hmac",
- "sha2",
 ]
 
 [[package]]

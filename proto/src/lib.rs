@@ -1,5 +1,5 @@
 //! Wire messages for macrd. See PROTOCOL.md at the repo root; this mirrors
-//! `server/Sources/MacRDCore/Protocol/Messages.swift`.
+//! `server-macos/Sources/MacRDCore/Protocol/Messages.swift`.
 
 use std::fmt;
 

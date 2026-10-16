@@ -1,7 +1,22 @@
-[workspace]
-resolver = "2"
-members = ["proto", "macrd", "host"]
+[package]
+name = "macrd"
+version = "0.1.0"
+edition = "2021"
+description = "macrd client (Linux and macOS): remote desktop into a macrd server on macOS or Linux"
 
-[profile.release]
-lto = "thin"
-codegen-units = 4
+[dependencies]
+macrd-proto = { path = "../proto" }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+log = "0.4"
+env_logger = "0.11"
+tokio = { version = "1", features = ["rt", "net", "io-util", "sync", "macros", "time"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "logging"] }
+sha2 = "0.10"
+rpassword = "7"
+dirs = "6"
+ffmpeg-next = "9"
+sdl2 = { version = "0.38", features = ["unsafe_textures"] }
+arboard = { version = "3", features = ["wayland-data-control", "image-data"] }
+image = { version = "0.25", default-features = false, features = ["png"] }

@@ -83,7 +83,7 @@ mod tests {
         assert_eq!(evdev_for_hid(0x66), None);
     }
 
-    /// Every usage the macOS server maps (server/Sources/MacRDCore/Input/KeyMap.swift) is mapped here too.
+    /// Every usage the macOS server maps (server-macos/Sources/MacRDCore/Input/KeyMap.swift) is mapped here too.
     #[test]
     fn covers_the_mac_server_table() {
         let mac: Vec<u16> = (0x04..=0x65)

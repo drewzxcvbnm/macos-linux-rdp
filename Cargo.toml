@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["proto", "client", "server-linux"]
+
+[profile.release]
+lto = "thin"
+codegen-units = 4

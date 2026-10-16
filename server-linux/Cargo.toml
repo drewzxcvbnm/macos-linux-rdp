@@ -1,11 +1,11 @@
 [package]
-name = "macrd-host"
+name = "macrd-server-linux"
 version = "0.1.0"
 edition = "2021"
-description = "macrd Linux host: share an X11 desktop with macrd clients (e.g. from macOS)"
+description = "macrd server for Linux: share an X11 desktop with macrd clients"
 
 [[bin]]
-name = "macrd-host"
+name = "macrd-server-linux"
 path = "src/main.rs"
 
 [dependencies]

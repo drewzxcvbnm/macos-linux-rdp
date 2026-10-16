@@ -1,6 +1,7 @@
 # macrd wire protocol v1
 
-This document is the source of truth for both `server/` (Swift) and `client/` (Rust).
+This document is the source of truth for `server-macos/` (Swift), `server-linux/` (Rust) and `client/` (Rust);
+the Rust side shares `proto/`.
 
 ## Transport
 
@@ -77,10 +78,10 @@ The server must ignore every message other than `Hello`/`AuthResponse`/`Ping` be
 interpreted as the Mac **Fn/Globe** key: PC keyboards handle their own Fn key in firmware, so the client
 sends a stand-in key as `0x65` instead.
 
-On a Linux host (`macrd-host`) the same usages are injected as the corresponding evdev/X keys; `0x65` is
+On a Linux server (`macrd-server-linux`) the same usages are injected as the corresponding evdev/X keys; `0x65` is
 the Menu key there and `0xE3`/`0xE7` (GUI) are Super.
 
-### Linux host notes
+### Linux server notes
 `ServerInfo` display ids are RandR output ids and `scale` is always 1. `StartStream` flag bit0 (virtual
 display) is ignored. Scroll deltas are converted to X wheel button clicks (lines directly; precise pixels
 accumulated, 30 px per click).

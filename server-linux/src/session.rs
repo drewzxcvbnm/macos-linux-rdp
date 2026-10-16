@@ -1,5 +1,5 @@
 //! One connected client: handshake, then routing messages to the stream, input and clipboard threads.
-//! Mirrors `server/Sources/MacRDCore/Net/Session.swift`.
+//! Mirrors `server-macos/Sources/MacRDCore/Net/Session.swift`.
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
