@@ -92,7 +92,7 @@ sudo apt install build-essential pkg-config clang libsdl2-dev \
   libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavfilter-dev libavdevice-dev \
   libva-dev libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
 # Fedora: sudo dnf install SDL2-devel ffmpeg-devel libva-devel clang pkgconf
-# macOS:  brew install sdl2 ffmpeg pkg-config   (and prefix cargo with LIBRARY_PATH=/opt/homebrew/lib)
+# macOS:  brew install sdl2 ffmpeg pkg-config
 ```
 
 Build and run from the repo root:
