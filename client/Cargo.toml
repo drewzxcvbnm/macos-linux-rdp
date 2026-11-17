@@ -19,4 +19,8 @@ dirs = "6"
 ffmpeg-next = "9"
 sdl2 = { version = "0.38", features = ["unsafe_textures", "use-pkgconfig"] }
 arboard = { version = "3", features = ["wayland-data-control", "image-data"] }
-image = { version = "0.25", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png", "tiff"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSPasteboard"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSString"] }

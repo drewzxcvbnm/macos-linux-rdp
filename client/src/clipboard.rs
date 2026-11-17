@@ -1,5 +1,6 @@
 //! Bi-directional clipboard sync. arboard has no change notification, so the local clipboard is polled.
 
+#[cfg(not(target_os = "macos"))]
 use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -108,11 +109,7 @@ fn apply(cb: &mut arboard::Clipboard, kind: u8, data: &[u8]) -> bool {
         CLIPBOARD_PNG => {
             let Ok(img) = image::load_from_memory_with_format(data, image::ImageFormat::Png) else { return false };
             let rgba = img.to_rgba8();
-            cb.set_image(arboard::ImageData {
-                width: rgba.width() as usize,
-                height: rgba.height() as usize,
-                bytes: Cow::Owned(rgba.into_raw()),
-            })
+            set_image(cb, data, rgba)
         }
         _ => return false,
     };
@@ -127,4 +124,56 @@ fn encode_png(width: usize, height: usize, rgba: &[u8]) -> Option<Vec<u8>> {
     let mut out = Cursor::new(Vec::new());
     img.write_to(&mut out, image::ImageFormat::Png).ok()?;
     Some(out.into_inner())
+}
+
+/// arboard's macOS image write goes through NSImage's TIFF representation, and ImageIO's TIFF writer
+/// crashes (EXC_ARM_DA_ALIGN) on recent macOS versions, so write PNG and a Rust-encoded TIFF ourselves.
+#[cfg(target_os = "macos")]
+fn set_image(_cb: &mut arboard::Clipboard, png: &[u8], rgba: image::RgbaImage) -> Result<(), arboard::Error> {
+    use objc2_app_kit::{NSPasteboard, NSPasteboardTypePNG, NSPasteboardTypeTIFF};
+    use objc2_foundation::NSData;
+
+    let mut tiff = Cursor::new(Vec::new());
+    let tiff = rgba.write_to(&mut tiff, image::ImageFormat::Tiff).ok().map(|_| tiff.into_inner());
+    // SAFETY: plain AppKit calls on the general pasteboard; NSPasteboard is thread-safe for this use.
+    unsafe {
+        let pb = NSPasteboard::generalPasteboard();
+        pb.clearContents();
+        let mut ok = pb.setData_forType(Some(&NSData::with_bytes(png)), NSPasteboardTypePNG);
+        if let Some(t) = &tiff {
+            ok |= pb.setData_forType(Some(&NSData::with_bytes(t)), NSPasteboardTypeTIFF);
+        }
+        if ok {
+            Ok(())
+        } else {
+            Err(arboard::Error::Unknown { description: "NSPasteboard setData:forType: failed".into() })
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn set_image(cb: &mut arboard::Clipboard, _png: &[u8], rgba: image::RgbaImage) -> Result<(), arboard::Error> {
+    cb.set_image(arboard::ImageData {
+        width: rgba.width() as usize,
+        height: rgba.height() as usize,
+        bytes: Cow::Owned(rgba.into_raw()),
+    })
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    /// Round-trips an image through the pasteboard without touching ImageIO (which crashes on recent macOS).
+    #[test]
+    #[ignore = "touches the real pasteboard"]
+    fn image_roundtrip() {
+        let mut cb = arboard::Clipboard::new().unwrap();
+        let img = image::RgbaImage::from_fn(4, 2, |x, y| image::Rgba([x as u8 * 50, y as u8 * 100, 7, 255]));
+        let png = encode_png(4, 2, img.as_raw()).unwrap();
+        assert!(apply(&mut cb, CLIPBOARD_PNG, &png));
+        let back = cb.get_image().unwrap();
+        assert_eq!((back.width, back.height), (4, 2));
+        assert_eq!(&back.bytes[..], img.as_raw().as_slice());
+    }
 }
