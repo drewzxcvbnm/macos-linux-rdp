@@ -64,6 +64,8 @@ pub enum Message {
     FrameAck { pts_us: u64 },
     Key { usage: u16, down: bool },
     MouseMove { x: u16, y: u16 },
+    /// Relative motion in remote pixels (games with pointer lock / mouse-look).
+    MouseMoveRel { dx: i16, dy: i16 },
     MouseButton { button: u8, down: bool },
     Scroll { dx: f32, dy: f32, precise: bool },
     MediaKey { key: u8, down: bool },
@@ -111,6 +113,7 @@ impl Message {
             Message::MouseButton { .. } => 0x32,
             Message::Scroll { .. } => 0x33,
             Message::MediaKey { .. } => 0x34,
+            Message::MouseMoveRel { .. } => 0x35,
             Message::Clipboard { .. } => 0x40,
             Message::Bye { .. } => 0x7F,
         }
@@ -188,6 +191,10 @@ impl Message {
                 w.u8(*key);
                 w.u8(*down as u8);
             }
+            Message::MouseMoveRel { dx, dy } => {
+                w.u16(*dx as u16);
+                w.u16(*dy as u16);
+            }
             Message::Clipboard { kind, data } => {
                 w.u8(*kind);
                 w.bytes(data);
@@ -243,6 +250,7 @@ impl Message {
             0x32 => Message::MouseButton { button: r.u8()?, down: r.u8()? != 0 },
             0x33 => Message::Scroll { dx: r.f32()?, dy: r.f32()?, precise: r.u8()? != 0 },
             0x34 => Message::MediaKey { key: r.u8()?, down: r.u8()? != 0 },
+            0x35 => Message::MouseMoveRel { dx: r.u16()? as i16, dy: r.u16()? as i16 },
             0x40 => Message::Clipboard { kind: r.u8()?, data: r.rest().to_vec() },
             0x7F => Message::Bye { reason: r.str()? },
             _ => return Ok(None),
@@ -393,6 +401,7 @@ mod tests {
             Message::FrameAck { pts_us: 42 },
             Message::Key { usage: 0xE3, down: true },
             Message::MouseMove { x: 0, y: 65535 },
+            Message::MouseMoveRel { dx: -3, dy: 32767 },
             Message::MouseButton { button: 2, down: false },
             Message::Scroll { dx: -1.5, dy: 3.25, precise: true },
             Message::MediaKey { key: media::VOLUME_UP, down: true },

@@ -108,6 +108,18 @@ public final class InputInjector {
     public func mouseMove(x: UInt16, y: UInt16) {
         position = CGPoint(x: displayBounds.minX + displayBounds.width * CGFloat(x) / 65535.0,
                            y: displayBounds.minY + displayBounds.height * CGFloat(y) / 65535.0)
+        postMotion(dx: 0, dy: 0)
+    }
+
+    /// Relative motion for games: the cursor moves by the delta (clamped to the display) and the event
+    /// carries the raw delta fields that pointer-lock apps read.
+    public func mouseMoveRel(dx: Int16, dy: Int16) {
+        position = CGPoint(x: min(max(position.x + CGFloat(dx), displayBounds.minX), displayBounds.maxX - 1),
+                           y: min(max(position.y + CGFloat(dy), displayBounds.minY), displayBounds.maxY - 1))
+        postMotion(dx: Int64(dx), dy: Int64(dy))
+    }
+
+    private func postMotion(dx: Int64, dy: Int64) {
         let (type, button): (CGEventType, CGMouseButton) =
             if buttonsDown.contains(0) { (.leftMouseDragged, .left) }
             else if buttonsDown.contains(1) { (.rightMouseDragged, .right) }
@@ -115,6 +127,10 @@ public final class InputInjector {
             else { (.mouseMoved, .left) }
         guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: position, mouseButton: button)
         else { return }
+        if dx != 0 || dy != 0 {
+            event.setIntegerValueField(.mouseEventDeltaX, value: dx)
+            event.setIntegerValueField(.mouseEventDeltaY, value: dy)
+        }
         event.flags = flags
         event.post(tap: .cghidEventTap)
     }

@@ -240,6 +240,8 @@ public final class Session {
             injector?.key(usage: usage, down: down)
         case let .mouseMove(x, y):
             injector?.mouseMove(x: x, y: y)
+        case let .mouseMoveRel(dx, dy):
+            injector?.mouseMoveRel(dx: dx, dy: dy)
         case let .mouseButton(button, down):
             injector?.mouseButton(button, down: down)
         case let .scroll(dx, dy, precise):

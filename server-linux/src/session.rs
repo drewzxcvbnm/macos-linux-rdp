@@ -121,6 +121,7 @@ async fn read_loop<R: AsyncRead + Unpin>(
             }
             m @ (Message::Key { .. }
             | Message::MouseMove { .. }
+            | Message::MouseMoveRel { .. }
             | Message::MouseButton { .. }
             | Message::Scroll { .. }
             | Message::MediaKey { .. }) => {

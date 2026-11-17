@@ -696,6 +696,7 @@ dependencies = [
  "image",
  "log",
  "macrd-proto",
+ "objc2",
  "objc2-app-kit",
  "objc2-foundation",
  "rpassword",

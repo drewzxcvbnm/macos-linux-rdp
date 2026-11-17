@@ -61,6 +61,7 @@ pub fn media_key(sc: Scancode) -> Option<u8> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hotkey {
     ToggleGrab,
+    ToggleRelativeMouse,
     ToggleFullscreen,
     NextDisplay,
     PrevDisplay,
@@ -126,6 +127,7 @@ impl InputState {
         match sc {
             Scancode::G => Some(Hotkey::ToggleGrab),
             Scancode::F => Some(Hotkey::ToggleFullscreen),
+            Scancode::R => Some(Hotkey::ToggleRelativeMouse),
             Scancode::Right => Some(Hotkey::NextDisplay),
             Scancode::Left => Some(Hotkey::PrevDisplay),
             Scancode::Q => Some(Hotkey::Quit),
@@ -201,6 +203,33 @@ impl InputState {
         self.scroll_acc.0 -= dx;
         self.scroll_acc.1 -= dy;
         Some(Message::Scroll { dx, dy, precise: true })
+    }
+}
+
+/// Scales local relative motion into remote pixels, carrying fractional remainders between calls so slow
+/// movements are not rounded away.
+#[derive(Default)]
+pub struct RelativeMotion {
+    acc: (f64, f64),
+}
+
+impl RelativeMotion {
+    /// `scale` is remote pixels per local unit. Returns `None` when nothing whole has accumulated yet.
+    pub fn step(&mut self, xrel: i32, yrel: i32, scale: f64) -> Option<Message> {
+        self.acc.0 += xrel as f64 * scale;
+        self.acc.1 += yrel as f64 * scale;
+        let (dx, dy) = (self.acc.0.trunc(), self.acc.1.trunc());
+        if dx == 0.0 && dy == 0.0 {
+            return None;
+        }
+        self.acc.0 -= dx;
+        self.acc.1 -= dy;
+        let clamp = |v: f64| v.clamp(i16::MIN as f64, i16::MAX as f64) as i16;
+        Some(Message::MouseMoveRel { dx: clamp(dx), dy: clamp(dy) })
+    }
+
+    pub fn reset(&mut self) {
+        self.acc = (0.0, 0.0);
     }
 }
 
@@ -287,5 +316,14 @@ mod tests {
             s.wheel(0.0, 1.0, MouseWheelDirection::Normal, 30.0),
             Some(Message::Scroll { dx: 0.0, dy: 1.0, precise: false })
         );
+    }
+
+    #[test]
+    fn relative_motion_accumulates_fractions() {
+        let mut r = RelativeMotion::default();
+        assert_eq!(r.step(1, 0, 0.5), None);
+        assert_eq!(r.step(1, 0, 0.5), Some(Message::MouseMoveRel { dx: 1, dy: 0 }));
+        assert_eq!(r.step(-4, 3, 1.5), Some(Message::MouseMoveRel { dx: -6, dy: 4 }));
+        assert_eq!(r.step(0, 1, 1.5), Some(Message::MouseMoveRel { dx: 0, dy: 2 })); // 0.5 carried + 1.5
     }
 }

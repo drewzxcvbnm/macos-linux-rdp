@@ -4,6 +4,8 @@
 mod clipboard;
 mod decode;
 mod input;
+#[cfg(target_os = "macos")]
+mod macos;
 mod net;
 mod render;
 
@@ -18,7 +20,7 @@ use sdl2::event::{Event, WindowEvent};
 use sdl2::video::FullscreenType;
 
 use crate::decode::{FrameSlot, HwAccel};
-use crate::input::{FnKey, Hotkey, InputState};
+use crate::input::{FnKey, Hotkey, InputState, RelativeMotion};
 use crate::net::{ConnectOptions, Inbound};
 
 #[derive(Parser, Debug)]
@@ -68,6 +70,9 @@ struct Args {
     /// Disable clipboard sync
     #[arg(long)]
     no_clipboard: bool,
+    /// Start in relative mouse mode (for games with mouse-look; toggle with Ctrl+Alt+R)
+    #[arg(long)]
+    relative_mouse: bool,
     /// Show the local cursor on top of the video
     #[arg(long)]
     local_cursor: bool,
@@ -81,6 +86,7 @@ struct Args {
 }
 
 const HOTKEYS: &str = "Hotkeys:\n  Ctrl+Alt+G      toggle keyboard/mouse grab\n  Ctrl+Alt+F      toggle fullscreen\n  \
+Ctrl+Alt+R      toggle relative mouse mode (games)\n  \
 Ctrl+Alt+Right  next display\n  Ctrl+Alt+Left   previous display\n  Ctrl+Alt+Q      quit";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
@@ -117,6 +123,8 @@ fn run(args: Args) -> Result<()> {
     sdl2::hint::set("SDL_MOUSE_FOCUS_CLICKTHROUGH", "1");
     sdl2::hint::set("SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR", "0");
     let sdl = sdl2::init().map_err(|e| anyhow!(e))?;
+    #[cfg(target_os = "macos")]
+    macos::patch_sdl_invisible_cursor();
     let video = sdl.video().map_err(|e| anyhow!(e))?;
     let events = sdl.event().map_err(|e| anyhow!(e))?;
     events.register_custom_event::<Wake>().map_err(|e| anyhow!(e))?;
@@ -194,18 +202,10 @@ fn run(args: Args) -> Result<()> {
     }
     let canvas = window.into_canvas().accelerated().build()?;
     let mut renderer = render::Renderer::new(canvas);
-    // The remote cursor is drawn into the video. On macOS, SDL hides the cursor via an embedded GIF that
-    // recent ImageIO versions crash on (EXC_ARM_DA_ALIGN), so use a transparent bitmap cursor there instead.
-    let _blank_cursor = if args.local_cursor {
-        None
-    } else if cfg!(target_os = "macos") {
-        let c = sdl2::mouse::Cursor::new(&[0], &[0], 8, 1, 0, 0).map_err(|e| anyhow!(e))?;
-        c.set();
-        Some(c)
-    } else {
+    // The remote cursor is drawn into the video. (On macOS, hiding relies on macos::patch_sdl_invisible_cursor.)
+    if !args.local_cursor {
         sdl.mouse().show_cursor(false);
-        None
-    };
+    }
 
     let codec = if args.codec == CodecArg::Hevc { CODEC_HEVC } else { CODEC_H264 };
     let start_stream = |index: usize, size: (u32, u32)| {
@@ -226,6 +226,9 @@ fn run(args: Args) -> Result<()> {
     input.natural_scroll = args.natural_scroll;
     let mut grabbed = true;
     set_grab(&mut renderer, grabbed);
+    let mut relative = args.relative_mouse;
+    let mut rel_motion = RelativeMotion::default();
+    sdl.mouse().set_relative_mouse_mode(relative);
     let mut pending_resize: Option<Instant> = None;
     let mut last_ping = Instant::now() - Duration::from_secs(10);
     let mut rtt_ms: Option<f64> = None;
@@ -270,6 +273,12 @@ fn run(args: Args) -> Result<()> {
                             grabbed = !grabbed;
                             set_grab(&mut renderer, grabbed);
                         }
+                        Some(Hotkey::ToggleRelativeMouse) => {
+                            relative = !relative;
+                            rel_motion.reset();
+                            sdl.mouse().set_relative_mouse_mode(relative);
+                            log::info!("relative mouse mode {}", if relative { "on" } else { "off" });
+                        }
                         Some(Hotkey::ToggleFullscreen) => {
                             let w = renderer.canvas.window_mut();
                             let next = if w.fullscreen_state() == FullscreenType::Off {
@@ -293,18 +302,31 @@ fn run(args: Args) -> Result<()> {
                         let _ = out.send(m);
                     }
                 }
-                Event::MouseMotion { x, y, .. } => {
-                    if let Some(r) = video_rect_in_window(&renderer) {
+                Event::MouseMotion { x, y, xrel, yrel, .. } => {
+                    if relative {
+                        // Scale window points to remote pixels so sensitivity matches sitting at the machine.
+                        let scale = match (renderer.video_size(), video_rect_in_window(&renderer)) {
+                            (Some((vw, _)), Some(r)) => vw as f64 / r.width().max(1) as f64,
+                            _ => 1.0,
+                        };
+                        if let Some(m) = rel_motion.step(xrel, yrel, scale) {
+                            let _ = out.send(m);
+                        }
+                    } else if let Some(r) = video_rect_in_window(&renderer) {
                         let (nx, ny) = input::normalize(x, y, r);
                         let _ = out.send(Message::MouseMove { x: nx, y: ny });
                     }
                 }
                 Event::MouseButtonDown { mouse_btn, x, y, .. } | Event::MouseButtonUp { mouse_btn, x, y, .. } => {
                     let down = matches!(event, Event::MouseButtonDown { .. });
-                    if let (Some(b), Some(r)) = (InputState::button(mouse_btn), video_rect_in_window(&renderer)) {
-                        let (nx, ny) = input::normalize(x, y, r);
-                        let _ = out.send(Message::MouseMove { x: nx, y: ny });
-                        let _ = out.send(Message::MouseButton { button: b, down });
+                    if let Some(b) = InputState::button(mouse_btn) {
+                        if relative {
+                            let _ = out.send(Message::MouseButton { button: b, down });
+                        } else if let Some(r) = video_rect_in_window(&renderer) {
+                            let (nx, ny) = input::normalize(x, y, r);
+                            let _ = out.send(Message::MouseMove { x: nx, y: ny });
+                            let _ = out.send(Message::MouseButton { button: b, down });
+                        }
                     }
                 }
                 Event::MouseWheel { precise_x, precise_y, direction, .. } => {
@@ -383,8 +405,9 @@ fn run(args: Args) -> Result<()> {
             let dec_ms = if df > 0 { (decode_us - stats_decode_us) as f64 / df as f64 / 1000.0 } else { 0.0 };
             let rtt = rtt_ms.map(|r| format!(" · RTT {r:.1} ms")).unwrap_or_default();
             let grab = if grabbed { "" } else { " · ungrabbed (Ctrl+Alt+G)" };
+            let rel = if relative { " · relative mouse (Ctrl+Alt+R)" } else { "" };
             let _ = renderer.canvas.window_mut().set_title(&format!(
-                "macrd — {host} · {stream_label} · {fps:.0} fps · {mbps:.1} Mbps · decode {dec_ms:.1} ms{rtt}{grab}"
+                "macrd — {host} · {stream_label} · {fps:.0} fps · {mbps:.1} Mbps · decode {dec_ms:.1} ms{rtt}{grab}{rel}"
             ));
             stats_frames = frames;
             stats_decode_us = decode_us;

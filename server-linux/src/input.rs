@@ -84,6 +84,10 @@ impl Injector {
                 let (px, py) = map_point(x, y, rect);
                 self.fake(MOTION_NOTIFY_EVENT, 0, px, py)?;
             }
+            Message::MouseMoveRel { dx, dy } => {
+                // XTest: a non-zero detail makes the motion relative to the current pointer position.
+                self.conn.xtest_fake_input(MOTION_NOTIFY_EVENT, 1, x11rb::CURRENT_TIME, x11rb::NONE, dx, dy, 0)?;
+            }
             Message::MouseButton { button, down } => {
                 let Some(b) = x_button(button) else { return Ok(()) };
                 if down == self.buttons.contains(&b) {

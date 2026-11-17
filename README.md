@@ -116,6 +116,7 @@ bitrate, decode time and RTT.
 |-----------------|------------------------------|
 | Ctrl+Alt+G      | toggle keyboard grab         |
 | Ctrl+Alt+F      | toggle fullscreen            |
+| Ctrl+Alt+R      | toggle relative mouse mode (for games with mouse-look, e.g. Minecraft) |
 | Ctrl+Alt+→ / ←  | next / previous remote display |
 | Ctrl+Alt+Q      | quit                         |
 

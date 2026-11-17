@@ -45,6 +45,7 @@ public enum Message: Equatable, Sendable {
     case frameAck(ptsUs: UInt64)
     case key(usage: UInt16, down: Bool)
     case mouseMove(x: UInt16, y: UInt16)
+    case mouseMoveRel(dx: Int16, dy: Int16)
     case mouseButton(button: UInt8, down: Bool)
     case scroll(dx: Float, dy: Float, precise: Bool)
     case mediaKey(key: UInt8, down: Bool)
@@ -74,6 +75,7 @@ public enum Message: Equatable, Sendable {
         case .mouseButton: 0x32
         case .scroll: 0x33
         case .mediaKey: 0x34
+        case .mouseMoveRel: 0x35
         case .clipboard: 0x40
         case .bye: 0x7F
         }
@@ -115,6 +117,8 @@ public enum Message: Equatable, Sendable {
             w.u16(usage); w.u8(down ? 1 : 0)
         case let .mouseMove(x, y):
             w.u16(x); w.u16(y)
+        case let .mouseMoveRel(dx, dy):
+            w.u16(UInt16(bitPattern: dx)); w.u16(UInt16(bitPattern: dy))
         case let .mouseButton(button, down):
             w.u8(button); w.u8(down ? 1 : 0)
         case let .scroll(dx, dy, precise):
@@ -165,6 +169,7 @@ public enum Message: Equatable, Sendable {
         case 0x32: return .mouseButton(button: try r.u8(), down: try r.u8() != 0)
         case 0x33: return .scroll(dx: try r.f32(), dy: try r.f32(), precise: try r.u8() != 0)
         case 0x34: return .mediaKey(key: try r.u8(), down: try r.u8() != 0)
+        case 0x35: return .mouseMoveRel(dx: Int16(bitPattern: try r.u16()), dy: Int16(bitPattern: try r.u16()))
         case 0x40: return .clipboard(kind: try r.u8(), data: r.rest())
         case 0x7F: return .bye(reason: try r.str())
         default: return nil
